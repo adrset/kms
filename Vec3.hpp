@@ -21,6 +21,8 @@ class Vec3{
 		return (x*x + y*y + z*z);
 	}
 	
+	void zero();
+	
 	friend Vec3 operator+(const Vec3& left, const Vec3& right);
 	friend Vec3 operator-(const Vec3& left, const Vec3& right);
 	friend Vec3 operator*(const Vec3& left, float right);

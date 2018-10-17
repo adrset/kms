@@ -141,7 +141,7 @@ int main(int argc, char** argv){
 	for(unsigned int i=0;i<N;i++){
 				std::cout<<F_i[i]<<std::endl;
 	}
-	for(unsigned int s = 1;s< STEPS +STEPS_O; s++){
+	for(unsigned int s = 1;s<0; s++){
 		
 		for(unsigned int i=0;i<N;i++){
 			pVectors[i] = pVectors[i] + 0.5 * F_i[i] * dt;

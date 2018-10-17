@@ -1,5 +1,5 @@
 CC=g++
-CFLAGS=-Wall -pedantic -std=c++11
+CFLAGS=-Wall -pedantic -std=c++11 -O3
 AUTHOR= Adrian Setniewski
 all: pr clean
 pr: main.o Vec3.o

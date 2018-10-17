@@ -51,6 +51,12 @@ Vec3 operator-(const Vec3& left, const Vec3& right){
 	
 }
 
+void Vec3::zero(){
+	this->x = 0;
+	this->y = 0;
+	this->z = 0;
+}
+
 
 Vec3 operator/(const Vec3& left, float right) {
          Vec3 vec;
