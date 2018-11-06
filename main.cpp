@@ -14,17 +14,27 @@ const double L = 2.3;
 const double f = 10000.0;
 const double e = 1.0;
 const double PI = 3.14159265359;
-const double dt = 0.01;
-const unsigned int STEPS = 10000;
+
 const unsigned int STEPS_O = 1000;
 const unsigned int STEPS_XYZ = 10;
 const unsigned int STEPS_OUT = 100;
-const unsigned int n = 5;
+const unsigned int n = 3;
 const unsigned int N = n * n * n;
+
+double pown(double a, int power){
+	double ret = a;
+	
+	for(int ii = 0; ii < power-1; ii++ ){
+		ret *= a;
+	}
+
+	return ret;
+}
 
 void calculateForces(std::vector<Vec3>& F_i, std::vector<Vec3>& rVectors, double& V, double& P){
 	V = 0;
 	P = 0;
+	
 	for(unsigned int i=0;i<N;i++){
 		F_i[i].zero();
 	}
@@ -38,12 +48,13 @@ void calculateForces(std::vector<Vec3>& F_i, std::vector<Vec3>& rVectors, double
 		V += temp; // 													akumulacja V
 		
 		// F - (14) i dodac do F_i
-		Vec3 tempF = r_i < L ? 0 : f*(L-r_i) * rVectors[ii] / r_i;
+		Vec3 tempF = r_i < L ? Vec3() : f*(L-r_i) * rVectors[ii] / r_i;
 		F_i[ii] = F_i[ii] + tempF;
-			
+		
 		// Cisnienie chwilowe (15)
 		
 		P += tempF.getLength();
+		//std::cout<<r_i<<"<"<<L<<std::endl;
 		if(ii>0){
 			// WEWNETRZNA PETLA
 			// <!!!!!!!!>
@@ -53,12 +64,12 @@ void calculateForces(std::vector<Vec3>& F_i, std::vector<Vec3>& rVectors, double
 				len = len - rVectors[jj];
 				double length = len.getLength();
 				// pot. par atomowych (9)
-				double V_p = e * (pow((R / length),12.0) - 2.0 *  pow((R / length),6.0));
+				double V_p = e * (pown((R / length),12) - 2.0 *  pown((R / length),6));
 				V += V_p;// 											akumulacja V
 				
 				// Sily miedzyatomowe Fi Fj (13)
 				Vec3 F_ij;
-				F_ij = 12.0 * e *((pow(R/length,12.0) - pow(R/length,6.0))) * ((rVectors[ii] - rVectors[jj]) / (length * length));
+				F_ij = 12.0 * e *((pown(R/length,12) - pown(R/length,6))) * ((rVectors[ii] - rVectors[jj]) / (length * length));
 				F_i[ii] =  F_i[ii] + F_ij;
 				F_i[jj] =  F_i[jj] + F_ij * -1.0;
 				
@@ -67,11 +78,23 @@ void calculateForces(std::vector<Vec3>& F_i, std::vector<Vec3>& rVectors, double
 		}
 	}
 	P *= 1.0 / (4.0 * PI * L * L);
+	
 }
 
 int main(int argc, char** argv){
-	std::ofstream xyz("xyz.dat");
-	std::ofstream out("out.dat");
+	if(argc<3)
+		return 1;
+	std::vector<std::string> argList;
+	for(int i=0;i<argc;i++){
+		
+		argList.push_back(argv[i]);
+	    //now you can access argList[n]
+	}
+	double dt = std::stod(argList[2]);
+	int STEPS = 5 / (dt);
+	std::cout<<"dt: " << dt << std::endl;
+	std::ofstream xyz("output/xyz" + argList[1] + ".dat");
+	std::ofstream out("output/out" + argList[1] + ".dat");
 	srand48(time(NULL));
 	Vec3 b0 (a, 0.0, 0.0);
 	Vec3 b1 (a / 2.0, a / 2.0 * sqrt(3), 0.0);
@@ -132,6 +155,12 @@ int main(int argc, char** argv){
 	
 	double V = 0.0;
 	double P = 0.0;
+	double E_kin = 0;
+	double T = 0;
+	double potentialTmp = 0;
+	double energyTmp = 0;
+	double pTmp = 0;
+	double tTmp = 0;
 	std::vector<Vec3> F_i;
 	for(unsigned int i=0;i<N;i++){
 		F_i.push_back(Vec3(0,0,0));
@@ -139,8 +168,9 @@ int main(int argc, char** argv){
 	
 	calculateForces(F_i, rVectors, V, P);
 	for(unsigned int i=0;i<N;i++){
-				std::cout<<F_i[i]<<std::endl;
+				//std::cout<<F_i[i]<<std::endl;
 	}
+	
 	for(unsigned int s = 1;s< STEPS +STEPS_O; s++){
 		
 		for(unsigned int i=0;i<N;i++){
@@ -154,15 +184,25 @@ int main(int argc, char** argv){
 			pVectors[i] = pVectors[i] + 0.5 * F_i[i] * dt;	
 		}
 		
-		if(s % STEPS_OUT == 0){
-			double E_kin = 0;
-			double T = 0;
-			for(unsigned int i=0;i<N;i++){
-				E_kin += pVectors[i].getLengthSquared() / (2.0 * m);
-			}
-			T = 2.0 / (3.0 * N * k) * E_kin;
+		E_kin = 0;
+		T = 0;
+		for(unsigned int i=0;i<N;i++){
+			E_kin += pVectors[i].getLengthSquared() / (2.0 * m);
+		}
+		T = 2.0 / (3.0 * N * k) * E_kin;
+		if(s > STEPS_O){
+			potentialTmp += V;
+			energyTmp += E_kin;
+			tTmp += T;
+			pTmp += P;	
+		}
+		if(s % STEPS_OUT == 0 && s > STEPS_O){
 			
-			out<<s*dt<<"\t"<<V<<"\t"<<E_kin<<"\t"<<E_kin+V<<"\t"<<T<<"\t"<<P<<"\t"<<std::endl;
+			out<<s*dt<<"\t"<<potentialTmp/STEPS_OUT<<"\t"<<energyTmp/STEPS_OUT<<"\t"<<(energyTmp+potentialTmp)/STEPS_OUT<<"\t"<<tTmp/(STEPS_OUT)<<"\t"<<pTmp/(STEPS_OUT)<<"\t"<<std::endl;
+			potentialTmp = 0;
+			energyTmp = 0;
+			pTmp = 0;
+			tTmp = 0;
 		}
 		if(s % STEPS_XYZ == 0){
 			for(unsigned int i=0;i<N;i++){
@@ -170,13 +210,14 @@ int main(int argc, char** argv){
 			}
 			xyz<<std::endl<<std::endl;
 		}
-		
+
 		if(s % STEPS_O){
-			//std::cout<< (double) s / ((double) STEPS +STEPS_O) * 100.0<<std::endl;
+			printf("\r%.2f%\t\t",(double) s / ((double) STEPS +STEPS_O) * 100.0);
 		}
 		
+		
 	}
-	
+	std::cout<<std::endl;
 	plik.close();
 	
 	out.close();
